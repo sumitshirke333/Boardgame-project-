@@ -1,0 +1,75 @@
+- hosts: app
+  become: yes
+  tasks:
+    - name: Update packages
+      apt:
+        update_cache: yes
+        upgrade: yes
+
+    - name: Install Java (for Jenkins)
+      apt:
+        name: openjdk-17-jdk
+        state: present
+
+    - name: Install required packages
+      apt:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - apt-transport-https
+        - ca-certificates
+        - curl
+        - gnupg
+        - lsb-release
+        - unzip
+
+    - name: Install Docker
+      apt:
+        name: docker.io
+        state: present
+
+    - name: Start Docker
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Add Jenkins apt key
+      apt_key:
+        url: https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+        state: present
+
+    - name: Add Jenkins repository
+      apt_repository:
+        repo: "deb https://pkg.jenkins.io/debian-stable binary/"
+        state: present
+
+    - name: Install Jenkins
+      apt:
+        name: jenkins
+        state: present
+        update_cache: yes
+
+    - name: Start Jenkins
+      service:
+        name: jenkins
+        state: started
+        enabled: yes
+
+    # --- SonarQube Setup ---
+    - name: Pull SonarQube LTS Docker image
+      community.docker.docker_image:
+        name: sonarqube
+        tag: lts
+        source: pull
+
+    - name: Run SonarQube container
+      community.docker.docker_container:
+        name: sonarqube
+        image: sonarqube:lts
+        state: started
+        restart_policy: always
+        published_ports:
+          - "9000:9000"
+        env:
+          SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"

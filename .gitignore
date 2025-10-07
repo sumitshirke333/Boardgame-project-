@@ -1,0 +1,86 @@
+# ===============================
+# Maven
+# ===============================
+target/
+!.mvn/wrapper/maven-wrapper.jar
+.mvn/wrapper/maven-wrapper.properties
+log/
+logs/
+
+# ===============================
+# IntelliJ / Eclipse / VS Code
+# ===============================
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.project
+.classpath
+.settings/
+
+# ===============================
+# OS-specific files
+# ===============================
+.DS_Store
+Thumbs.db
+
+# ===============================
+# Build and Runtime
+# ===============================
+/build/
+/out/
+/bin/
+/tmp/
+/*.log
+hs_err_pid*
+replay_pid*
+
+# ===============================
+# Spring Boot
+# ===============================
+*.jar
+*.war
+*.ear
+!src/main/resources/
+
+# ===============================
+# Environment / Secrets
+# ===============================
+.env
+application-*.yml
+application-*.yaml
+application-*.properties
+secrets/
+credentials/
+*.pem
+*.key
+*.crt
+
+# ===============================
+# Jenkins & CI/CD
+# ===============================
+/workspace/
+/jenkins/
+/.cicd/
+
+# ===============================
+# Node / Frontend (if present)
+# ===============================
+node_modules/
+dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ===============================
+# Docker
+# ===============================
+/docker-compose.override.yml
+.dockerignore
+
+# ===============================
+# Misc
+# ===============================
+*.swp
+*.swo
