@@ -33,7 +33,7 @@ pipeline {
 
         stage('Deploy to EC2') {
             steps {
-                sshagent(['ec2-ssh-key']) {   
+                sshagent(['ubuntukey']) {   
                     
                     sh 'scp -o StrictHostKeyChecking=no target/*.jar $EC2_USER@$EC2_IP:/home/ubuntu/$JAR_NAME'
                     sh 'ssh -o StrictHostKeyChecking=no $EC2_USER@$EC2_IP "sudo pkill -f $JAR_NAME || true"'
