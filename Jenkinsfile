@@ -34,11 +34,11 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 sshagent(['ec2-ssh-key']) {   
-                    sh '''
-                    scp -o StrictHostKeyChecking=no target/*.jar $EC2_USER@$EC2_IP:/home/ubuntu/$JAR_NAME
-                    ssh -o StrictHostKeyChecking=no $EC2_USER@$EC2_IP "sudo pkill -f $JAR_NAME || true"
-                    ssh -o StrictHostKeyChecking=no $EC2_USER@$EC2_IP "nohup java -jar /home/ubuntu/$JAR_NAME > app.log 2>&1 &"
-                    '''
+                    
+                    sh 'scp -o StrictHostKeyChecking=no target/*.jar $EC2_USER@$EC2_IP:/home/ubuntu/$JAR_NAME'
+                    sh 'ssh -o StrictHostKeyChecking=no $EC2_USER@$EC2_IP "sudo pkill -f $JAR_NAME || true"'
+                    sh 'ssh -o StrictHostKeyChecking=no $EC2_USER@$EC2_IP "nohup java -jar /home/ubuntu/$JAR_NAME > app.log 2>&1 &"'
+                    
                 }
             }
         }
