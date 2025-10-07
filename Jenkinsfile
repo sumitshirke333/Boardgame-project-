@@ -36,8 +36,9 @@ pipeline {
                 sshagent(['ubuntukey']) {   
                     
                     sh 'scp -o StrictHostKeyChecking=no target/*.jar $EC2_USER@$EC2_IP:/home/ubuntu/$JAR_NAME'
+                    sh 'ssh -o StrictHostKeyChecking=no $EC2_USER@$EC2_IP "nohup java -jar /home/ubuntu/$JAR_NAME --server.port=8081 > app.log 2>&1 &"'
                     sh 'ssh -o StrictHostKeyChecking=no $EC2_USER@$EC2_IP "sudo pkill -f $JAR_NAME || true"'
-                    sh 'ssh -o StrictHostKeyChecking=no $EC2_USER@$EC2_IP "nohup java -jar /home/ubuntu/$JAR_NAME > app.log 2>&1 &"'
+
                     
                 }
             }
