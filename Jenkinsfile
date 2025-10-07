@@ -15,24 +15,25 @@ pipeline {
 
         stage('Build') {
             steps {
-                dir('BoardGame'){
+                
                 sh 'mvn clean package -DskipTests'
             }
         }
-        }
+        
 
         stage('Test') {
             steps {
-                dir('BoardGame'){
+                
                 sh 'mvn test'
             }
         }
-        }
+        
         stage('Deploy to EC2') {
             steps {
                 sshagent(['ec2-ssh-key']) {
                     sh '''
-                    scp -o StrictHostKeyChecking=no BoardGame/target/*.jar ubuntu@13.200.143.85:/home/ubuntu/app.jar
+                    scp -o StrictHostKeyChecking=no target/*.jar ubuntu@13.200.143.85:/home/ubuntu/app.jar
+                    ssh -o StrictHostKeyChecking=no $EC2_USER@$EC2_IP "pkill -f $JAR_NAME || true"
                     ssh -o StrictHostKeyChecking=no ubuntu@13.200.143.85 "nohup java -jar /home/ubuntu/app.jar > app.log 2>&1 &"
                     '''
                 }
@@ -42,10 +43,10 @@ pipeline {
 
     post {
         success {
-            echo '✅ Deployment successful!'
+            echo ' Deployment successful!'
         }
         failure {
-            echo '❌ Build or deployment failed!'
+            echo ' Build or deployment failed!'
         }
     }
 }
