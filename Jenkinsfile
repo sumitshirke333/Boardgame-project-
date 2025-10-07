@@ -32,7 +32,7 @@ pipeline {
             steps {
                 sshagent(['ec2-ssh-key']) {
                     sh '''
-                    scp -o StrictHostKeyChecking=no target/*.jar ubuntu@13.200.143.85:/home/ubuntu/app.jar
+                    scp -o StrictHostKeyChecking=no BoardGame/target/*.jar ubuntu@13.200.143.85:/home/ubuntu/app.jar
                     ssh -o StrictHostKeyChecking=no ubuntu@13.200.143.85 "nohup java -jar /home/ubuntu/app.jar > app.log 2>&1 &"
                     '''
                 }
