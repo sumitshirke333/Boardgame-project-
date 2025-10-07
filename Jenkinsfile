@@ -15,7 +15,7 @@ pipeline {
 
         stage('Build') {
             steps {
-                dir('Boardgame-project-/BoardGame'){
+                dir('BoardGame'){
                 sh 'mvn clean package -DskipTests'
             }
         }
@@ -23,10 +23,11 @@ pipeline {
 
         stage('Test') {
             steps {
+                dir('BoardGame'){
                 sh 'mvn test'
             }
         }
-
+        }
         stage('Deploy to EC2') {
             steps {
                 sshagent(['ec2-ssh-key']) {
