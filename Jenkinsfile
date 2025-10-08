@@ -8,7 +8,7 @@ pipeline {
 
     environment {
         EC2_USER = 'ubuntu'
-        EC2_IP = '13.200.143.85'             
+        EC2_IP = '3.110.60.96'             
         JAR_NAME = 'app.jar'
     }
 
