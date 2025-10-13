@@ -1,75 +1,139 @@
-- hosts: app
-  become: yes
+---
+- name: Setup Jenkins Master Node with SonarQube
+  hosts: jenkins
+  become: true
   tasks:
-    - name: Update packages
+
+    # ----------------------------------------------------
+    # 🧹 Fix Ubuntu Repo Issues
+    # ----------------------------------------------------
+    - name: Remove duplicate ubuntu.sources file
+      file:
+        path: /etc/apt/sources.list.d/ubuntu.sources
+        state: absent
+
+    - name: Reset /etc/apt/sources.list to clean official mirrors
+      copy:
+        dest: /etc/apt/sources.list
+        content: |
+          deb http://archive.ubuntu.com/ubuntu noble main restricted universe multiverse
+          deb http://archive.ubuntu.com/ubuntu noble-updates main restricted universe multiverse
+          deb http://archive.ubuntu.com/ubuntu noble-backports main restricted universe multiverse
+          deb http://security.ubuntu.com/ubuntu noble-security main restricted universe multiverse
+
+    - name: Clean apt cache
+      command: apt-get clean
+
+    - name: Remove old apt lists
+      file:
+        path: /var/lib/apt/lists/
+        state: absent
+
+    - name: Recreate apt lists dir
+      file:
+        path: /var/lib/apt/lists/
+        state: directory
+
+    # ----------------------------------------------------
+    # 🔑 Jenkins Repo & Key
+    # ----------------------------------------------------
+    - name: Purge old Jenkins repo definitions
+      shell: |
+        rm -f /etc/apt/sources.list.d/pkg_jenkins_io_debian_stable.list
+        rm -f /etc/apt/sources.list.d/jenkins*.list
+        rm -f /etc/apt/sources.list.d/jenkins*.sources
+        rm -f /usr/share/keyrings/jenkins*.gpg
+        apt-key del 5BA31D57EF5975CA || true
+        sed -i '/jenkins/d' /etc/apt/sources.list
+      ignore_errors: true
+
+    - name: Download Jenkins GPG key and convert to gpg format
+      shell: |
+        curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | gpg --dearmor -o /usr/share/keyrings/jenkins.gpg
+
+    - name: Add Jenkins apt repository
+      copy:
+        dest: /etc/apt/sources.list.d/jenkins.list
+        content: |
+          deb [signed-by=/usr/share/keyrings/jenkins.gpg] https://pkg.jenkins.io/debian-stable binary/
+
+    # ----------------------------------------------------
+    # 🛡️ Trivy Repo & Key
+    # ----------------------------------------------------
+    - name: Purge old Trivy repo + key
+      shell: |
+        rm -f /etc/apt/sources.list.d/trivy.list
+        rm -f /usr/share/keyrings/trivy*.gpg
+        apt-key del E9D0A3616276FA6C || true
+      ignore_errors: true
+
+    - name: Download Trivy GPG key and convert to gpg format
+      shell: |
+        curl -fsSL https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor -o /usr/share/keyrings/trivy.gpg
+
+    - name: Add Trivy apt repository
+      copy:
+        dest: /etc/apt/sources.list.d/trivy.list
+        content: |
+          deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb noble main
+
+    # ----------------------------------------------------
+    # 📦 Install Required Packages
+    # ----------------------------------------------------
+    - name: Update apt packages
       apt:
         update_cache: yes
-        upgrade: yes
+        force_apt_get: yes
 
-    - name: Install Java (for Jenkins)
+    - name: Install Java, Jenkins, Docker, Maven, Trivy
       apt:
-        name: openjdk-17-jdk
+        name:
+          - openjdk-17-jdk
+          - jenkins
+          - docker.io
+          - maven
+          - trivy
         state: present
+        force_apt_get: yes
 
-    - name: Install required packages
-      apt:
-        name: "{{ item }}"
-        state: present
-      loop:
-        - apt-transport-https
-        - ca-certificates
-        - curl
-        - gnupg
-        - lsb-release
-        - unzip
-
-    - name: Install Docker
-      apt:
-        name: docker.io
-        state: present
-
-    - name: Start Docker
-      service:
+    # ----------------------------------------------------
+    # 🧠 Enable Services and Permissions
+    # ----------------------------------------------------
+    - name: Enable and start Docker
+      systemd:
         name: docker
         state: started
         enabled: yes
 
-    - name: Add Jenkins apt key
-      apt_key:
-        url: https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
-        state: present
-
-    - name: Add Jenkins repository
-      apt_repository:
-        repo: "deb https://pkg.jenkins.io/debian-stable binary/"
-        state: present
-
-    - name: Install Jenkins
-      apt:
+    - name: Add Jenkins user to Docker group
+      user:
         name: jenkins
-        state: present
-        update_cache: yes
+        groups: docker
+        append: yes
 
-    - name: Start Jenkins
-      service:
+    - name: Reload systemd daemon
+      command: systemctl daemon-reload
+
+    - name: Restart Jenkins to apply changes
+      systemd:
         name: jenkins
-        state: started
+        state: restarted
         enabled: yes
 
-    # --- SonarQube Setup ---
-    - name: Pull SonarQube LTS Docker image
-      community.docker.docker_image:
+    # ----------------------------------------------------
+    # 🧠 Run SonarQube in Docker
+    # ----------------------------------------------------
+    - name: Pull SonarQube image
+      docker_image:
         name: sonarqube
         tag: lts
         source: pull
 
     - name: Run SonarQube container
-      community.docker.docker_container:
+      docker_container:
         name: sonarqube
         image: sonarqube:lts
         state: started
         restart_policy: always
         published_ports:
           - "9000:9000"
-        env:
-          SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
