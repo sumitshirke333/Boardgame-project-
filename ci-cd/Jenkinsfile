@@ -6,17 +6,15 @@ pipeline {
         IMAGE_NAME = 'boardgame-app'
         WORKER_INVENTORY = 'boardgame-infra/ansible/inventory.ini'
 
-        // 🔐 Docker Hub
-        DOCKERHUB_USER = 'your-dockerhub-username'               // 👈 Replace with your Docker Hub username
-        DOCKERHUB_PASS = credentials('dockerhub-credentials')    // Jenkins credentials ID for Docker Hub
+        // 🔐 Docker Hub username only (no password here)
+        DOCKERHUB_USER = 'your-dockerhub-username'   // 👈 replace this
 
         // 🔐 SonarQube
-        SONARQUBE_ENV = 'SonarQube'  // Must match name configured in Jenkins > System
-
+        SONARQUBE_ENV = 'SonarQube'  // must match Jenkins > Manage Jenkins > Configure System
     }
 
     tools {
-        maven 'Maven'   // Make sure Maven is installed in Jenkins Global Tools
+        maven 'Maven'
     }
 
     stages {
@@ -26,7 +24,7 @@ pipeline {
             steps {
                 git branch: 'main',
                     url: 'https://github.com/sumitshirke333/Boardgame-project-.git',
-                    credentialsId: 'github-credentials'   // 👈 GitHub PAT credentials ID
+                    credentialsId: 'github-credentials'
             }
         }
 
@@ -61,37 +59,39 @@ pipeline {
         // 5️⃣ Build Docker Image
         stage('Build Docker Image') {
             steps {
-                sh """
-                docker build -t ${DOCKERHUB_USER}/${IMAGE_NAME}:latest .
-                """
+                sh '''
+                docker build -t $DOCKERHUB_USER/$IMAGE_NAME:latest .
+                '''
             }
         }
 
         // 6️⃣ Trivy Image Scan
         stage('Trivy Scan') {
             steps {
-                sh """
-                trivy image --exit-code 0 --severity HIGH,CRITICAL ${DOCKERHUB_USER}/${IMAGE_NAME}:latest
-                """
+                sh '''
+                trivy image --exit-code 0 --severity HIGH,CRITICAL $DOCKERHUB_USER/$IMAGE_NAME:latest
+                '''
             }
         }
 
-        // 7️⃣ Push Docker Image to Docker Hub
+        // 7️⃣ Push Docker Image to Docker Hub (secure)
         stage('Push to Docker Hub') {
             steps {
-                sh """
-                echo "${DOCKERHUB_PASS}" | docker login -u "${DOCKERHUB_USER}" --password-stdin
-                docker push ${DOCKERHUB_USER}/${IMAGE_NAME}:latest
-                """
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh '''
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                        docker push $DOCKER_USER/$IMAGE_NAME:latest
+                    '''
+                }
             }
         }
 
         // 8️⃣ Deploy on Worker Node using Ansible
         stage('Deploy to Worker Node') {
             steps {
-                sh """
-                ansible-playbook -i ${WORKER_INVENTORY} boardgame-infra/ansible/deploy-app.yml
-                """
+                sh '''
+                ansible-playbook -i $WORKER_INVENTORY boardgame-infra/ansible/deploy-app.yml
+                '''
             }
         }
     }
