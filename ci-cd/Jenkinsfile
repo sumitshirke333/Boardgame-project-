@@ -2,15 +2,13 @@ pipeline {
     agent any
 
     environment {
-        // 🌍 App Details
         IMAGE_NAME = 'boardgame'
         WORKER_INVENTORY = 'boardgame-infra/ansible/inventory.ini'
 
-        // 🔐 Docker Hub username only (no password here)
-        DOCKERHUB_USER = 'your-dockerhub-username'   // 👈 replace this
+        // ✅ use your real docker hub username here
+        DOCKERHUB_USER = 'sumitshirke369'
 
-        // 🔐 SonarQube
-        SONARQUBE_ENV = 'SonarQube'  // must match Jenkins > Manage Jenkins > Configure System
+        SONARQUBE_ENV = 'SonarQube'
     }
 
     tools {
@@ -19,7 +17,6 @@ pipeline {
 
     stages {
 
-        // 1️⃣ Checkout Code from GitHub
         stage('Checkout') {
             steps {
                 git branch: 'main',
@@ -28,7 +25,6 @@ pipeline {
             }
         }
 
-        // 2️⃣ Run Unit Tests
         stage('Run Tests') {
             steps {
                 sh 'mvn clean test'
@@ -40,7 +36,6 @@ pipeline {
             }
         }
 
-        // 3️⃣ SonarQube Code Analysis
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv("${SONARQUBE_ENV}") {
@@ -49,23 +44,21 @@ pipeline {
             }
         }
 
-        // 4️⃣ Build Maven Project
         stage('Build Maven Project') {
             steps {
                 sh 'mvn clean package -DskipTests'
             }
         }
 
-        // 5️⃣ Build Docker Image
         stage('Build Docker Image') {
             steps {
                 sh '''
                 docker build -t $DOCKERHUB_USER/$IMAGE_NAME:latest .
+                docker images
                 '''
             }
         }
 
-        // 6️⃣ Trivy Image Scan
         stage('Trivy Scan') {
             steps {
                 sh '''
@@ -74,7 +67,6 @@ pipeline {
             }
         }
 
-        // 7️⃣ Push Docker Image to Docker Hub (secure)
         stage('Push to Docker Hub') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
@@ -86,7 +78,6 @@ pipeline {
             }
         }
 
-        // 8️⃣ Deploy on Worker Node using Ansible
         stage('Deploy to Worker Node') {
             steps {
                 sh '''
