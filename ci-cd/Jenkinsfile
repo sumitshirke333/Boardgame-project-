@@ -2,13 +2,15 @@ pipeline {
     agent any
 
     environment {
+        // 🌍 App Details
         IMAGE_NAME = 'boardgame'
-        WORKER_INVENTORY = 'boardgame-infra/ansible/inventory.ini'
+        WORKER_IP = '13.200.251.163'      // 👈 Replace with your Worker Node's Public IP
 
-        // ✅ use your real docker hub username here
-        DOCKERHUB_USER = 'sumitshirke369'
+        // 🔐 Docker Hub
+        DOCKERHUB_USER = 'sumitshirke369'         // 👈 Your Docker Hub username
 
-        SONARQUBE_ENV = 'SonarQube'
+        // 🔐 SonarQube
+        SONARQUBE_ENV = 'SonarQube'               // Must match name in Jenkins > Manage Jenkins > System
     }
 
     tools {
@@ -17,6 +19,7 @@ pipeline {
 
     stages {
 
+        // 1️⃣ Checkout Code from GitHub
         stage('Checkout') {
             steps {
                 git branch: 'main',
@@ -25,6 +28,7 @@ pipeline {
             }
         }
 
+        // 2️⃣ Run Unit Tests
         stage('Run Tests') {
             steps {
                 sh 'mvn clean test'
@@ -36,6 +40,7 @@ pipeline {
             }
         }
 
+        // 3️⃣ SonarQube Code Analysis
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv("${SONARQUBE_ENV}") {
@@ -44,12 +49,14 @@ pipeline {
             }
         }
 
+        // 4️⃣ Build Maven Project
         stage('Build Maven Project') {
             steps {
                 sh 'mvn clean package -DskipTests'
             }
         }
 
+        // 5️⃣ Build Docker Image
         stage('Build Docker Image') {
             steps {
                 sh '''
@@ -59,6 +66,7 @@ pipeline {
             }
         }
 
+        // 6️⃣ Trivy Image Scan
         stage('Trivy Scan') {
             steps {
                 sh '''
@@ -67,6 +75,7 @@ pipeline {
             }
         }
 
+        // 7️⃣ Push Docker Image to Docker Hub
         stage('Push to Docker Hub') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
@@ -78,11 +87,19 @@ pipeline {
             }
         }
 
+        // 8️⃣ Deploy to Worker Node via SSH + Docker
         stage('Deploy to Worker Node') {
             steps {
-                sh '''
-                ansible-playbook -i $WORKER_INVENTORY boardgame-infra/ansible/deploy-app.yml
-                '''
+                sshagent(['worker-ssh']) {
+                    sh '''
+                        ssh -o StrictHostKeyChecking=no ubuntu@$WORKER_IP "
+                            docker pull $DOCKERHUB_USER/$IMAGE_NAME:latest &&
+                            docker stop boardgame || true &&
+                            docker rm boardgame || true &&
+                            docker run -d --name boardgame -p 8080:8080 $DOCKERHUB_USER/$IMAGE_NAME:latest
+                        "
+                    '''
+                }
             }
         }
     }
