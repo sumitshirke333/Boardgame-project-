@@ -1,0 +1,107 @@
+pipeline {
+    agent any
+
+    environment {
+        // 🌍 App Details
+        IMAGE_NAME = 'boardgame-app'
+        WORKER_INVENTORY = 'boardgame-infra/ansible/inventory.ini'
+
+        // 🔐 Docker Hub
+        DOCKERHUB_USER = 'your-dockerhub-username'               // 👈 Replace with your Docker Hub username
+        DOCKERHUB_PASS = credentials('dockerhub-credentials')    // Jenkins credentials ID for Docker Hub
+
+        // 🔐 SonarQube
+        SONARQUBE_ENV = 'SonarQube'  // Must match name configured in Jenkins > System
+
+    }
+
+    tools {
+        maven 'Maven'   // Make sure Maven is installed in Jenkins Global Tools
+    }
+
+    stages {
+
+        // 1️⃣ Checkout Code from GitHub
+        stage('Checkout') {
+            steps {
+                git branch: 'main',
+                    url: 'https://github.com/sumitshirke333/Boardgame-project-.git',
+                    credentialsId: 'github-credentials'   // 👈 GitHub PAT credentials ID
+            }
+        }
+
+        // 2️⃣ Run Unit Tests
+        stage('Run Tests') {
+            steps {
+                sh 'mvn clean test'
+            }
+            post {
+                unsuccessful {
+                    error("❌ Tests failed! Stopping the pipeline.")
+                }
+            }
+        }
+
+        // 3️⃣ SonarQube Code Analysis
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv("${SONARQUBE_ENV}") {
+                    sh 'mvn verify sonar:sonar'
+                }
+            }
+        }
+
+        // 4️⃣ Build Maven Project
+        stage('Build Maven Project') {
+            steps {
+                sh 'mvn clean package -DskipTests'
+            }
+        }
+
+        // 5️⃣ Build Docker Image
+        stage('Build Docker Image') {
+            steps {
+                sh """
+                docker build -t ${DOCKERHUB_USER}/${IMAGE_NAME}:latest .
+                """
+            }
+        }
+
+        // 6️⃣ Trivy Image Scan
+        stage('Trivy Scan') {
+            steps {
+                sh """
+                trivy image --exit-code 0 --severity HIGH,CRITICAL ${DOCKERHUB_USER}/${IMAGE_NAME}:latest
+                """
+            }
+        }
+
+        // 7️⃣ Push Docker Image to Docker Hub
+        stage('Push to Docker Hub') {
+            steps {
+                sh """
+                echo "${DOCKERHUB_PASS}" | docker login -u "${DOCKERHUB_USER}" --password-stdin
+                docker push ${DOCKERHUB_USER}/${IMAGE_NAME}:latest
+                """
+            }
+        }
+
+        // 8️⃣ Deploy on Worker Node using Ansible
+        stage('Deploy to Worker Node') {
+            steps {
+                sh """
+                ansible-playbook -i ${WORKER_INVENTORY} boardgame-infra/ansible/deploy-app.yml
+                """
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ Pipeline completed successfully! 🚀'
+        }
+        failure {
+            echo '❌ Pipeline failed. Check logs above for details.'
+        }
+    }
+}
