@@ -1,16 +1,16 @@
 pipeline {
-    agent { label 'master' }   // ensure all stages run on the same node with Docker installed
+    agent any
 
     environment {
         // 🌍 App Details
-        IMAGE_NAME = 'boardgame'   // 👈 changed from 'boardgame-app' to match your local image
+        IMAGE_NAME = 'boardgame'
         WORKER_INVENTORY = 'boardgame-infra/ansible/inventory.ini'
 
-        // 🔐 Docker Hub
-        DOCKERHUB_USER = 'sumitshirke369'   // 👈 your real Docker Hub username
+        // 🔐 Docker Hub username only (no password here)
+        DOCKERHUB_USER = 'your-dockerhub-username'   // 👈 replace this
 
         // 🔐 SonarQube
-        SONARQUBE_ENV = 'SonarQube'
+        SONARQUBE_ENV = 'SonarQube'  // must match Jenkins > Manage Jenkins > Configure System
     }
 
     tools {
@@ -74,12 +74,11 @@ pipeline {
             }
         }
 
-        // 7️⃣ Push Docker Image to Docker Hub
+        // 7️⃣ Push Docker Image to Docker Hub (secure)
         stage('Push to Docker Hub') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                     sh '''
-                        docker tag $DOCKER_USER/$IMAGE_NAME:latest $DOCKER_USER/$IMAGE_NAME:latest
                         echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
                         docker push $DOCKER_USER/$IMAGE_NAME:latest
                     '''
