@@ -16,17 +16,19 @@ pipeline {
     tools {
         maven 'Maven'
     }
+    
+    stages {
 
-    stage('Cleanup Workspace & Docker') {
-    steps {
-        sh '''
-        echo "🧹 Cleaning up old Docker images and workspace..."
-        docker system prune -af --volumes || true
-        rm -rf /tmp/*
-        '''
-    }
-}
-
+        // 🧹 Cleanup stage goes HERE — inside stages, before Checkout
+        stage('Cleanup Workspace & Docker') {
+            steps {
+                sh '''
+                echo "🧹 Cleaning old Docker images and temp files..."
+                docker system prune -af --volumes || true
+                rm -rf /tmp/*
+                '''
+            }
+        }
     stages {
 
         // 1️⃣ Checkout Code from GitHub
