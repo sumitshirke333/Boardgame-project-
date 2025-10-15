@@ -25,7 +25,7 @@ pipeline {
                 sh '''
                 echo "🧹 Cleaning old Docker images and temp files..."
                 docker system prune -af --volumes || true
-                rm -rf /tmp/*
+                sudo rm -rf /tmp/*
                 '''
             }
         }
