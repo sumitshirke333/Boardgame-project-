@@ -4,7 +4,7 @@ pipeline {
     environment {
         // 🌍 App Details
         IMAGE_NAME = 'boardgame'
-        WORKER_IP = '35.154.248.228'       // 👈 Replace with your Worker Node's Public IP
+        WORKER_IP = '35.154.248.228'       // 👈 Worker Node's Public IP
 
         // 🔐 Docker Hub
         DOCKERHUB_USER = 'sumitshirke369' // 👈 Your Docker Hub username
@@ -16,10 +16,10 @@ pipeline {
     tools {
         maven 'Maven'
     }
-    
+
     stages {
 
-        // 🧹 Cleanup stage goes HERE — inside stages, before Checkout
+        // 🧹 0️⃣ Cleanup Stage
         stage('Cleanup Workspace & Docker') {
             steps {
                 sh '''
@@ -29,7 +29,6 @@ pipeline {
                 '''
             }
         }
-    stages {
 
         // 1️⃣ Checkout Code from GitHub
         stage('Checkout') {
