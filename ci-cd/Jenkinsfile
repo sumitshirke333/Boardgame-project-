@@ -17,6 +17,16 @@ pipeline {
         maven 'Maven'
     }
 
+    stage('Cleanup Workspace & Docker') {
+    steps {
+        sh '''
+        echo "🧹 Cleaning up old Docker images and workspace..."
+        docker system prune -af --volumes || true
+        rm -rf /tmp/*
+        '''
+    }
+}
+
     stages {
 
         // 1️⃣ Checkout Code from GitHub
