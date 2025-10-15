@@ -4,13 +4,13 @@ pipeline {
     environment {
         // 🌍 App Details
         IMAGE_NAME = 'boardgame'
-        WORKER_IP = '13.200.251.163'      // 👈 Replace with your Worker Node's Public IP
+        WORKER_IP = '35.154.248.228'       // 👈 Replace with your Worker Node's Public IP
 
         // 🔐 Docker Hub
-        DOCKERHUB_USER = 'sumitshirke369'         // 👈 Your Docker Hub username
+        DOCKERHUB_USER = 'sumitshirke369' // 👈 Your Docker Hub username
 
         // 🔐 SonarQube
-        SONARQUBE_ENV = 'SonarQube'               // Must match name in Jenkins > Manage Jenkins > System
+        SONARQUBE_ENV = 'SonarQube'       // Must match name in Jenkins > Manage Jenkins > System
     }
 
     tools {
@@ -66,12 +66,15 @@ pipeline {
             }
         }
 
-        // 6️⃣ Trivy Image Scan
+        // 6️⃣ Trivy Image Scan (With Custom Temp Directory)
         stage('Trivy Scan') {
             steps {
-                sh '''
-                trivy image --exit-code 0 --severity HIGH,CRITICAL $DOCKERHUB_USER/$IMAGE_NAME:latest
-                '''
+                withEnv(["TRIVY_TMP_DIR=/var/lib/trivy"]) {
+                    sh '''
+                    mkdir -p $TRIVY_TMP_DIR
+                    trivy image --exit-code 0 --severity HIGH,CRITICAL $DOCKERHUB_USER/$IMAGE_NAME:latest
+                    '''
+                }
             }
         }
 
