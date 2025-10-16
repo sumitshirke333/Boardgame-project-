@@ -4,7 +4,7 @@ pipeline {
     environment {
         // 🌍 App Details
         IMAGE_NAME = 'boardgame'
-        WORKER_IP = '35.154.248.228'       // 👈 Worker Node's Public IP
+        WORKER_IP = '13.200.250.69'       // 👈 Worker Node's Public IP
 
         // 🔐 Docker Hub
         DOCKERHUB_USER = 'sumitshirke369' // 👈 Your Docker Hub username
