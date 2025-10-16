@@ -5,11 +5,15 @@ pipeline {
         // 🌍 App Details
         IMAGE_NAME = 'boardgame'
         DOCKERHUB_USER = 'sumitshirke369'   // 🔐 Your Docker Hub username
-        EC2_HOST = '13.233.61.40'          // 🌐 ✅ Updated Worker EC2 public IP
+        EC2_HOST = '13.233.61.40'          // 🌐 ✅ Worker EC2 public IP
+
+        // 🔐 SonarQube
+        SONARQUBE_ENV = 'SonarQube'       // Must match the name in Jenkins System Config
     }
 
     tools {
         maven 'Maven'   // Make sure Maven is configured in Jenkins Global Tool Config
+        sonarQubeScanner 'SonarScanner'  // Make sure SonarQube Scanner is installed in Jenkins Tools
     }
 
     stages {
@@ -28,7 +32,20 @@ pipeline {
             }
         }
 
-        // 3️⃣ Build Docker Image
+        // 3️⃣ SonarQube Analysis
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv("${SONARQUBE_ENV}") {
+                    sh '''
+                        mvn sonar:sonar \
+                          -Dsonar.projectKey=boardgame-app \
+                          -Dsonar.host.url=http://65.2.125.175:9000
+                    '''
+                }
+            }
+        }
+
+        // 4️⃣ Build Docker Image
         stage('Build Docker Image') {
             steps {
                 sh '''
@@ -38,7 +55,7 @@ pipeline {
             }
         }
 
-        // 4️⃣ Trivy Scan
+        // 5️⃣ Trivy Scan
         stage('Trivy Scan') {
             steps {
                 sh '''
@@ -47,7 +64,7 @@ pipeline {
             }
         }
 
-        // 5️⃣ Push to Docker Hub
+        // 6️⃣ Push to Docker Hub
         stage('Push to Docker Hub') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
@@ -59,7 +76,7 @@ pipeline {
             }
         }
 
-        // 6️⃣ Deploy to EC2 via SSH + Docker
+        // 7️⃣ Deploy to EC2 via SSH + Docker
         stage('Deploy to EC2') {
             steps {
                 sshagent(['worker-ssh']) {
