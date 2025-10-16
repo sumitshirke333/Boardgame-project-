@@ -5,15 +5,14 @@ pipeline {
         // 🌍 App Details
         IMAGE_NAME = 'boardgame'
         DOCKERHUB_USER = 'sumitshirke369'   // 🔐 Your Docker Hub username
-        EC2_HOST = '13.233.61.40'          // 🌐 ✅ Worker EC2 public IP
+        EC2_HOST = '13.233.61.40'           // 🌐 ✅ Worker EC2 public IP
 
         // 🔐 SonarQube
-        SONARQUBE_ENV = 'SonarQube'       // Must match the name in Jenkins System Config
+        SONARQUBE_ENV = 'SonarQube'         // Must match the name in Jenkins System Config
     }
 
     tools {
-        maven 'Maven'   // Make sure Maven is configured in Jenkins Global Tool Config
-        sonarQubeScanner 'SonarScanner'  // Make sure SonarQube Scanner is installed in Jenkins Tools
+        maven 'Maven'   // ✅ Only Maven tool here
     }
 
     stages {
