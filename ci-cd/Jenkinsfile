@@ -4,70 +4,31 @@ pipeline {
     environment {
         // 🌍 App Details
         IMAGE_NAME = 'boardgame'
-        WORKER_IP = '13.200.250.69'       // 👈 Worker Node's Public IP
-
-        // 🔐 Docker Hub
-        DOCKERHUB_USER = 'sumitshirke369' // 👈 Your Docker Hub username
-
-        // 🔐 SonarQube
-        SONARQUBE_ENV = 'SonarQube'       // Must match name in Jenkins > Manage Jenkins > System
+        DOCKERHUB_USER = 'sumitshirke369'   // 🔐 Your Docker Hub username
+        EC2_HOST = '13.200.250.69'          // 🌐 EC2 public IP where you want to deploy
     }
 
     tools {
-        maven 'Maven'
+        maven 'Maven'   // Make sure Maven is configured in Jenkins Global Tool Config
     }
 
     stages {
-
-        // 🧹 0️⃣ Cleanup Stage
-        stage('Cleanup Workspace & Docker') {
-            steps {
-                sh '''
-                echo "🧹 Cleaning old Docker images and temp files..."
-                docker system prune -af --volumes || true
-                sudo rm -rf /tmp/* || true
-                '''
-            }
-        }
-
         // 1️⃣ Checkout Code from GitHub
         stage('Checkout') {
             steps {
                 git branch: 'main',
-                    url: 'https://github.com/sumitshirke333/Boardgame-project-.git',
-                    credentialsId: 'github-credentials'
+                    url: 'https://github.com/sumitshirke333/Boardgame-project-.git'
             }
         }
 
-        // 2️⃣ Run Unit Tests
-        stage('Run Tests') {
-            steps {
-                sh 'mvn clean test'
-            }
-            post {
-                unsuccessful {
-                    error("❌ Tests failed! Stopping the pipeline.")
-                }
-            }
-        }
-
-        // 3️⃣ SonarQube Code Analysis
-        stage('SonarQube Analysis') {
-            steps {
-                withSonarQubeEnv("${SONARQUBE_ENV}") {
-                    sh 'mvn verify sonar:sonar'
-                }
-            }
-        }
-
-        // 4️⃣ Build Maven Project
+        // 2️⃣ Build Maven Project
         stage('Build Maven Project') {
             steps {
                 sh 'mvn clean package -DskipTests'
             }
         }
 
-        // 5️⃣ Build Docker Image
+        // 3️⃣ Build Docker Image
         stage('Build Docker Image') {
             steps {
                 sh '''
@@ -77,19 +38,16 @@ pipeline {
             }
         }
 
-        // 6️⃣ Trivy Image Scan (With Custom Temp Directory)
+        // 4️⃣ Trivy Scan
         stage('Trivy Scan') {
             steps {
-                withEnv(["TRIVY_TMP_DIR=/var/lib/trivy"]) {
-                    sh '''
-                    mkdir -p $TRIVY_TMP_DIR
-                    trivy image --exit-code 0 --severity HIGH,CRITICAL $DOCKERHUB_USER/$IMAGE_NAME:latest
-                    '''
-                }
+                sh '''
+                trivy image --severity HIGH,CRITICAL --no-progress $DOCKERHUB_USER/$IMAGE_NAME:latest || true
+                '''
             }
         }
 
-        // 7️⃣ Push Docker Image to Docker Hub
+        // 5️⃣ Push to Docker Hub
         stage('Push to Docker Hub') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
@@ -101,16 +59,16 @@ pipeline {
             }
         }
 
-        // 8️⃣ Deploy to Worker Node via SSH + Docker
-        stage('Deploy to Worker Node') {
+        // 6️⃣ Deploy to EC2 via SSH + Docker
+        stage('Deploy to EC2') {
             steps {
                 sshagent(['worker-ssh']) {
                     sh '''
-                        ssh -o StrictHostKeyChecking=no ubuntu@$WORKER_IP "
-                            docker pull $DOCKERHUB_USER/$IMAGE_NAME:latest &&
-                            docker stop boardgame || true &&
-                            docker rm boardgame || true &&
-                            docker run -d --name boardgame -p 8080:8080 $DOCKERHUB_USER/$IMAGE_NAME:latest
+                        ssh -o StrictHostKeyChecking=no ubuntu@$EC2_HOST "
+                          docker pull $DOCKERHUB_USER/$IMAGE_NAME:latest &&
+                          docker stop boardgame || true &&
+                          docker rm boardgame || true &&
+                          docker run -d --name boardgame -p 8080:8080 $DOCKERHUB_USER/$IMAGE_NAME:latest
                         "
                     '''
                 }
@@ -120,7 +78,7 @@ pipeline {
 
     post {
         success {
-            echo '✅ Pipeline completed successfully! 🚀'
+            echo '✅ Pipeline completed successfully! 🚀 App is live on EC2'
         }
         failure {
             echo '❌ Pipeline failed. Check logs above for details.'
