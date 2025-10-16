@@ -5,7 +5,7 @@ pipeline {
         // 🌍 App Details
         IMAGE_NAME = 'boardgame'
         DOCKERHUB_USER = 'sumitshirke369'   // 🔐 Your Docker Hub username
-        EC2_HOST = '13.200.250.69'          // 🌐 EC2 public IP where you want to deploy
+        EC2_HOST = '13.233.61.40'          // 🌐 ✅ Updated Worker EC2 public IP
     }
 
     tools {
